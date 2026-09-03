@@ -1,3 +1,8 @@
 .vc-reply-timestamp {
+    /* Extra right margin to prevent the ":SS" characters from being clipped
+       under the replied-to user's avatar, which sits at a fixed position to
+       the right. The original 0.25em was sized for H:MM; three extra characters
+       need ~1em of breathing room. */
     margin-right: 0.25em;
+    overflow: visible;
 }

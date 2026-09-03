@@ -16,6 +16,33 @@ import type { HTMLAttributes } from "react";
 
 const MessageClasses = findCssClassesLazy("separator", "latin24CompactTimeStamp");
 
+// Build the time portion ("HH:MM:SS" or "H:MM:SS AM/PM") from a native Date.
+// Using getSeconds() on a plain Date — confirmed to work where moment .seconds() did not.
+function formatTimeWithSeconds(d: Date): string {
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    const ss = String(d.getSeconds()).padStart(2, "0");
+    
+    return `${hh}:${mm}:${ss}`;
+}
+
+// Format a cross-day timestamp as "D/M/YYYY HH:MM:SS" to match Discord's
+// compact date style rather than calendarFormat's verbose "28 March 2026 18:44".
+function formatCrossDay(d: Date): string {
+    const day   = d.getDate();
+    const month = d.getMonth() + 1;
+    const year  = d.getFullYear();
+    return `${day}/${month}/${year} ${formatTimeWithSeconds(d)}`;
+}
+
+function formatTimestamp(refTimestamp: any, baseTimestamp: any): string {
+    // refTimestamp is a moment-like object — convert to a plain Date via valueOf().
+    const d = new Date(refTimestamp.valueOf());
+    return DateUtils.isSameDay(refTimestamp, baseTimestamp)
+        ? formatTimeWithSeconds(d)
+        : formatCrossDay(d);
+}
+
 function Sep(props: HTMLAttributes<HTMLElement>) {
     return <i className={MessageClasses.separator} aria-hidden={true} {...props} />;
 }
@@ -41,15 +68,12 @@ function ReplyTimestamp({
     return (
         <Timestamp
             className="vc-reply-timestamp"
-            compact={DateUtils.isSameDay(refTimestamp, baseTimestamp)}
+            compact={false}
             timestamp={refTimestamp}
             isInline={false}
         >
             <Sep>[</Sep>
-            {DateUtils.isSameDay(refTimestamp, baseTimestamp)
-                ? DateUtils.dateFormat(refTimestamp, "LT")
-                : DateUtils.calendarFormat(refTimestamp)
-            }
+            {formatTimestamp(refTimestamp, baseTimestamp)}
             <Sep>]</Sep>
         </Timestamp>
     );
@@ -63,7 +87,6 @@ export default definePlugin({
 
     patches: [
         {
-            // Same find as in ValidReply
             find: "#{intl::REPLY_QUOTE_MESSAGE_NOT_LOADED}",
             replacement: {
                 match: /\.onClickReply,.+?}\),(?=\i,\i,\i\])/,
